@@ -238,9 +238,30 @@ export const verifyEmail = async (
     user.otpExpires = undefined;
     await user.save();
 
+    // Send welcome email after verification
+    await sendEmail({
+      email: user.email,
+      subject: 'Welcome to Our E-commerce Platform',
+      html: `
+        <h1>Welcome ${user.firstName}! 🎉</h1>
+        <p>Thank you for verifying your email address.</p>
+        <p>Your account is now fully activated and you can start shopping on our platform.</p>
+        <div style="margin: 20px 0;">
+          <p>Here's what you can do next:</p>
+          <ul>
+            <li>Browse our product catalog</li>
+            <li>Add items to your wishlist</li>
+            <li>Make your first purchase</li>
+          </ul>
+        </div>
+        <p>If you have any questions, feel free to contact our support team.</p>
+        <p>Happy Shopping! 🛍️</p>
+      `,
+    });
+
     res.status(200).json({
       status: 'success',
-      message: 'Email verified successfully'
+      message: 'Email verified successfully. Welcome email sent!'
     });
   } catch (error) {
     next(error);
