@@ -1,36 +1,112 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Project Structure
 
-## Getting Started
+ecommerce-app/
+├── frontend/                  # Frontend application
+│   ├── public/                # Static assets
+│   │   ├── images/            # Static images
+│   │   ├── favicon.ico
+│   │   └── robots.txt
+│   ├── src/
+│   │   ├── components/        # Reusable UI components
+│   │   │   ├── Navbar/
+│   │   │   ├── Footer/
+│   │   │   ├── ProductCard/
+│   │   │   ├── Modal/
+│   │   │   └── Breadcrumbs/
+│   │   ├── pages/             # Page-level components
+│   │   │   ├── Home/
+│   │   │   ├── Product/
+│   │   │   ├── Cart/
+│   │   │   ├── Checkout/
+│   │   │   └── User/
+│   │   ├── features/          # Feature-based modules
+│   │   │   ├── auth/          # Authentication-related logic
+│   │   │   ├── products/      # Product-related state and logic
+│   │   │   ├── cart/          # Shopping cart logic
+│   │   │   └── orders/        # Order-related logic
+│   │   ├── hooks/             # Custom hooks
+│   │   │   ├── useAuth.js
+│   │   │   └── useFetch.js
+│   │   ├── context/           # Context API for global state management
+│   │   ├── utils/             # Utility functions
+│   │   ├── services/          # API services (Axios/Fetch calls)
+│   │   ├── assets/            # Images, fonts, etc.
+│   │   ├── App.tsx            # Main App component
+│   │   ├── index.tsx          # Entry point
+│   │   └── styles/            # Global styles (CSS/SCSS)
+├── backend/                   # Backend application
+│   ├── src/
+│   │   ├── controllers/       # Business logic
+│   │   │   ├── authController.js
+│   │   │   ├── productController.js
+│   │   │   ├── orderController.js
+│   │   │   └── userController.js
+│   │   ├── models/            # Database models
+│   │   │   ├── User.js
+│   │   │   ├── Product.js
+│   │   │   ├── Order.js
+│   │   │   └── Cart.js
+│   │   ├── routes/            # API routes
+│   │   │   ├── authRoutes.js
+│   │   │   ├── productRoutes.js
+│   │   │   ├── orderRoutes.js
+│   │   │   └── userRoutes.js
+│   │   ├── middleware/        # Middleware functions
+│   │   ├── config/            # Configuration files (DB, etc.)
+│   │   │   ├── db.js
+│   │   │   └── env.js
+│   │   ├── utils/             # Helper functions
+│   │   ├── app.js             # Express app configuration
+│   │   └── server.js          # Server entry point
+├── database/                  # Database initialization and seed data
+├── tests/                     # Test files for both frontend and backend
+├── .env                       # Environment variables
+├── package.json               # Project dependencies
+└── README.md                  # Documentation
 
-First, run the development server:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Authentication System
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+     POST /api/v1/auth/register  // User registration with email notification
+     POST /api/v1/auth/login     // JWT-based authentication
+     POST /api/v1/auth/logout    // Session termination
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+  
+User Management
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+     GET  /api/v1/users/profile  // Get user profile
+     PUT  /api/v1/users/profile  // Update profile
+     GET  /api/v1/users         // Admin: List all users
 
-## Learn More
+Product Management
 
-To learn more about Next.js, take a look at the following resources:
+     GET    /api/v1/products     // List products
+     POST   /api/v1/products     // Admin: Create product
+     PUT    /api/v1/products/:id // Admin: Update product
+     DELETE /api/v1/products/:id // Admin: Delete product
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Order System
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+     POST /api/v1/orders         // Create order with email confirmation
+     GET  /api/v1/orders         // List user's orders
+     PUT  /api/v1/orders/:id     // Update order status with notifications
 
-## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Security Features:
+1. JWT authentication
+2. Role-based access control (user/admin)
+3. Request validation
+4. Rate limiting
+5. Error handling
+6. Environment variable validation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Email Integration:
+1. Welcome emails
+2. Order confirmations
+3. Shipping notifications
+
+Database Models:
+1. User (with password hashing)
+2. Product (with stock management)
+3. Order (with status tracking)
+4. Cart (with total calculation)
