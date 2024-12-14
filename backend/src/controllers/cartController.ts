@@ -10,7 +10,7 @@ export const addToCart = async (
   next: NextFunction
 ) => {
   try {
-    const { productId, quantity } = req.body;
+    const { productId, quantity = 1 } = req.body;
 
     // Check product availability
     const product = await Product.findById(productId);
@@ -18,8 +18,12 @@ export const addToCart = async (
       throw new AppError('Product not found', 404);
     }
 
+    if (!product.isActive) {
+      throw new AppError('Product is not available', 400);
+    }
+
     if (product.stock < quantity) {
-      throw new AppError('Insufficient stock', 400);
+      throw new AppError(`Only ${product.stock} items available`, 400);
     }
 
     // Find or create cart
@@ -33,14 +37,19 @@ export const addToCart = async (
     }
 
     // Check if product already in cart
-    const cartItem = cart.items.find(
+    const existingItem = cart.items.find(
       item => item.product.toString() === productId
     );
 
-    if (cartItem) {
-      cartItem.quantity += quantity;
-      cartItem.price = product.price;
+    if (existingItem) {
+      // Update quantity if product exists
+      if (product.stock < existingItem.quantity + quantity) {
+        throw new AppError(`Only ${product.stock} items available`, 400);
+      }
+      existingItem.quantity += quantity;
+      existingItem.price = product.price;
     } else {
+      // Add new item
       cart.items.push({
         product: productId,
         quantity,
@@ -49,6 +58,9 @@ export const addToCart = async (
     }
 
     await cart.save();
+
+    // Populate product details
+    await cart.populate('items.product');
 
     res.status(200).json({
       status: 'success',
@@ -63,13 +75,23 @@ export const getCart = async (
   req: RequestWithUser,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void | Response> => {
   try {
-    const cart = await Cart.findOne({ user: req.user._id }).populate(
-      'items.product'
-    );
+    const cart = await Cart.findOne({ user: req.user._id }).populate('items.product');
 
-    res.status(200).json({
+    if (!cart) {
+      return res.status(200).json({
+        status: 'success',
+        data: {
+          cart: {
+            items: [],
+            totalAmount: 0,
+          },
+        },
+      });
+    }
+
+    return res.status(200).json({
       status: 'success',
       data: { cart },
     });
@@ -86,6 +108,10 @@ export const updateCartItem = async (
   try {
     const { productId, quantity } = req.body;
 
+    if (quantity < 0) {
+      throw new AppError('Quantity cannot be negative', 400);
+    }
+
     const cart = await Cart.findOne({ user: req.user._id });
     if (!cart) {
       throw new AppError('Cart not found', 404);
@@ -94,6 +120,7 @@ export const updateCartItem = async (
     const cartItem = cart.items.find(
       item => item.product.toString() === productId
     );
+
     if (!cartItem) {
       throw new AppError('Item not found in cart', 404);
     }
@@ -104,11 +131,21 @@ export const updateCartItem = async (
     }
 
     if (product.stock < quantity) {
-      throw new AppError('Insufficient stock', 400);
+      throw new AppError(`Only ${product.stock} items available`, 400);
     }
 
-    cartItem.quantity = quantity;
+    if (quantity === 0) {
+      // Remove item if quantity is 0
+      cart.items = cart.items.filter(
+        item => item.product.toString() !== productId
+      );
+    } else {
+      cartItem.quantity = quantity;
+      cartItem.price = product.price; // Update price in case it changed
+    }
+
     await cart.save();
+    await cart.populate('items.product');
 
     res.status(200).json({
       status: 'success',
@@ -140,6 +177,29 @@ export const removeFromCart = async (
     res.status(200).json({
       status: 'success',
       data: { cart },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const clearCart = async (
+  req: RequestWithUser,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const cart = await Cart.findOne({ user: req.user._id });
+    if (!cart) {
+      throw new AppError('Cart not found', 404);
+    }
+
+    cart.items = [];
+    await cart.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Cart cleared successfully',
     });
   } catch (error) {
     next(error);

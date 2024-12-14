@@ -1,5 +1,17 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+interface PaymentDetails {
+  paymentIntentId?: string;
+  clientSecret?: string;
+  paymentMethod?: string;
+  error?: string;
+  paidAt?: Date;
+  refundId?: string;
+  refundedAt?: Date;
+  refundReason?: string;
+  refundStatus?: string;
+}
+
 export interface IOrder extends Document {
   _id: mongoose.Types.ObjectId;
   user: mongoose.Types.ObjectId;
@@ -19,7 +31,7 @@ export interface IOrder extends Document {
     country: string;
   };
   paymentMethod: string;
-  paymentDetails?: Record<string, any>;
+  paymentDetails?: PaymentDetails;
   statusHistory: Array<{
     status: string;
     timestamp: Date;
