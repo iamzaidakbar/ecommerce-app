@@ -124,26 +124,37 @@ export const forgotPassword = async (
       throw new AppError('No user found with that email address', 404);
     }
 
+    // Generate reset token
     const resetToken = createPasswordResetToken(user);
     await user.save({ validateBeforeSave: false });
 
+    // Create reset URL
     const resetURL = `${req.protocol}://${req.get(
       'host'
     )}/api/v1/auth/reset-password/${resetToken}`;
 
-    await sendEmail({
-      email: user.email,
-      subject: 'Password Reset Token (valid for 10 minutes)',
-      html: `
-        <p>Forgot your password? Submit a PATCH request with your new password to: ${resetURL}</p>
-        <p>If you didn't forget your password, please ignore this email!</p>
-      `,
-    });
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: 'Your password reset token (valid for 10 minutes)',
+        html: `
+          <h1>Password Reset Request</h1>
+          <p>Forgot your password? Submit a PATCH request with your new password to: ${resetURL}</p>
+          <p>If you didn't forget your password, please ignore this email!</p>
+        `,
+      });
 
-    res.status(200).json({
-      status: 'success',
-      message: 'Token sent to email',
-    });
+      res.status(200).json({
+        status: 'success',
+        message: 'Token sent to email',
+      });
+    } catch (error) {
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+
+      throw new AppError('Error sending email. Try again later.', 500);
+    }
   } catch (error) {
     next(error);
   }
@@ -155,6 +166,7 @@ export const resetPassword = async (
   next: NextFunction
 ) => {
   try {
+    // Get user based on token
     const hashedToken = crypto
       .createHash('sha256')
       .update(req.params.token)
@@ -169,11 +181,13 @@ export const resetPassword = async (
       throw new AppError('Token is invalid or has expired', 400);
     }
 
+    // Set new password
     user.password = req.body.password;
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     await user.save();
 
+    // Log the user in
     const token = generateToken(user._id);
 
     res.status(200).json({

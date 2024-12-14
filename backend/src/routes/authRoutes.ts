@@ -1,6 +1,12 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { register, login, logout } from '../controllers/authController';
+import { 
+  register, 
+  login, 
+  logout,
+  forgotPassword,
+  resetPassword
+} from '../controllers/authController';
 import { validateRequest } from '../middleware/validateRequest';
 
 const router = express.Router();
@@ -40,5 +46,25 @@ router.post(
 );
 
 router.post('/logout', logout);
+
+router.post('/forgot-password',
+  [
+    body('email')
+      .isEmail()
+      .withMessage('Please provide a valid email'),
+  ],
+  validateRequest,
+  forgotPassword
+);
+
+router.patch('/reset-password/:token',
+  [
+    body('password')
+      .isLength({ min: 6 })
+      .withMessage('Password must be at least 6 characters long'),
+  ],
+  validateRequest,
+  resetPassword
+);
 
 export default router;
