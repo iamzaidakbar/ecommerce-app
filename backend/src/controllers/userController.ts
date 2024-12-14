@@ -53,7 +53,7 @@ export const updateProfile = async (
 
 // Admin Controllers
 export const getUsers = async (
-  req: Request,
+  _req: Request,
   res: Response,
   next: NextFunction
 ) => {

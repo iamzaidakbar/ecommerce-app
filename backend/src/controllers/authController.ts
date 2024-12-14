@@ -104,6 +104,7 @@ export const login = async (
 };
 
 export const logout = (req: Request, res: Response) => {
+  console.log(req.body);
   res.status(200).json({
     status: 'success',
     message: 'Logged out successfully',

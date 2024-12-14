@@ -17,10 +17,10 @@ export class AppError extends Error {
 
 export const errorHandler = (
   err: Error | AppError,
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction
-) => {
+  _next: NextFunction
+): Response => {
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
       status: err.status,
@@ -32,7 +32,7 @@ export const errorHandler = (
   console.error('Error:', err);
 
   // Send generic error response
-  res.status(500).json({
+  return res.status(500).json({
     status: 'error',
     message: 'Something went wrong',
   });

@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { Cart } from '../models/Cart';
 import { Product } from '../models/Product';
 import { AppError } from '../middleware/errorHandler';

@@ -60,7 +60,7 @@ export const env: Environment = {
   REDIS_URL: process.env.REDIS_URL || '',
 
   // CORS
-  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
 
   // Logging
   LOG_LEVEL: process.env.LOG_LEVEL || 'debug',

@@ -1,15 +1,11 @@
 # Dependencies
 node_modules/
-**/node_modules/
-
-# Build
 dist/
-build/
 
-# Environment
+# Environment variables
 .env
 .env.local
-.env.*
+.env.*.local
 
 # Logs
 logs
@@ -21,4 +17,4 @@ npm-debug.log*
 .idea/
 
 # OS
-.DS_Store 
+.DS_Store
