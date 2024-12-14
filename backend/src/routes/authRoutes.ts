@@ -5,7 +5,9 @@ import {
   login, 
   logout,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  verifyEmail,
+  resendVerificationEmail
 } from '../controllers/authController';
 import { validateRequest } from '../middleware/validateRequest';
 
@@ -65,6 +67,24 @@ router.patch('/reset-password/:token',
   ],
   validateRequest,
   resetPassword
+);
+
+router.post('/verify-email',
+  [
+    body('otp')
+      .isLength({ min: 6, max: 6 })
+      .withMessage('Invalid OTP format'),
+  ],
+  validateRequest,
+  verifyEmail
+);
+
+router.post('/resend-verification', 
+  [
+    body('email').isEmail().withMessage('Please provide a valid email')
+  ],
+  validateRequest, 
+  resendVerificationEmail
 );
 
 export default router;

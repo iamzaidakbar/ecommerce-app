@@ -24,6 +24,17 @@ const createPasswordResetToken = (user: IUser): string => {
   return resetToken;
 };
 
+const generateOTP = (): string => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+const createEmailVerificationOTP = (user: IUser): string => {
+  const otp = generateOTP();
+  user.emailVerificationOTP = otp;
+  user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  return otp;
+};
+
 export const register = async (
   req: Request,
   res: Response,
@@ -32,7 +43,7 @@ export const register = async (
   try {
     const { email, password, firstName, lastName } = req.body;
 
-    // Check if user already exists
+    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       throw new AppError('Email already registered', 400);
@@ -44,24 +55,31 @@ export const register = async (
       password,
       firstName,
       lastName,
+      isEmailVerified: false
     });
 
-    // Generate token
-    const token = generateToken(user._id);
+    // Generate OTP
+    const otp = createEmailVerificationOTP(user);
+    await user.save({ validateBeforeSave: false });
 
-    // Send welcome email
+    // Send OTP email
     await sendEmail({
       email: user.email,
-      subject: 'Welcome to Our E-commerce Platform',
+      subject: 'Email Verification OTP',
       html: `
-        <h1>Welcome ${user.firstName}!</h1>
-        <p>Thank you for registering with us.</p>
-        <p>You can now start shopping on our platform.</p>
+        <h1>Welcome to Our E-commerce Platform!</h1>
+        <p>Your verification code is:</p>
+        <h2 style="color: #4CAF50; font-size: 32px; letter-spacing: 2px;">${otp}</h2>
+        <p>This code will expire in 10 minutes.</p>
       `,
     });
 
+    // Generate JWT token
+    const token = generateToken(user._id);
+
     res.status(201).json({
       status: 'success',
+      message: 'OTP sent to email',
       token,
       data: { user },
     });
@@ -193,6 +211,77 @@ export const resetPassword = async (
     res.status(200).json({
       status: 'success',
       token,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyEmail = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { otp } = req.body;
+    const user = await User.findOne({
+      emailVerificationOTP: otp,
+      otpExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      throw new AppError('Invalid or expired OTP', 400);
+    }
+
+    user.isEmailVerified = true;
+    user.emailVerificationOTP = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Email verified successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resendVerificationEmail = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    if (user.isEmailVerified) {
+      throw new AppError('Email already verified', 400);
+    }
+
+    // Generate new OTP
+    const otp = createEmailVerificationOTP(user);
+    await user.save({ validateBeforeSave: false });
+
+    await sendEmail({
+      email: user.email,
+      subject: 'Email Verification OTP (resent)',
+      html: `
+        <h1>Email Verification</h1>
+        <p>Your new verification code is:</p>
+        <h2 style="color: #4CAF50; font-size: 32px; letter-spacing: 2px;">${otp}</h2>
+        <p>This code will expire in 10 minutes.</p>
+      `,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'New OTP sent to email'
     });
   } catch (error) {
     next(error);

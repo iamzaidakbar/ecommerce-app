@@ -67,4 +67,18 @@ export const requireAdmin = (
     return res.status(403).json({ message: 'Access denied' });
   }
   next();
+};
+
+export const requireEmailVerification = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void | Response> => {
+  if (!req.user.isEmailVerified) {
+    return res.status(403).json({
+      status: 'fail',
+      message: 'Please verify your email first'
+    });
+  }
+  next();
 }; 
