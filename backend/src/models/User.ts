@@ -16,6 +16,7 @@ export interface IUser extends Document {
   emailVerificationOTP?: string;
   otpExpires?: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
+  profileImage?: string;
 }
 
 const userSchema = new Schema<IUser>(
@@ -60,6 +61,9 @@ const userSchema = new Schema<IUser>(
     },
     emailVerificationOTP: String,
     otpExpires: Date,
+    profileImage: {
+      type: String,
+    },
   },
   {
     timestamps: true,

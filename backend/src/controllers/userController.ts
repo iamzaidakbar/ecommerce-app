@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { User } from '../models/User';
 import { AppError } from '../middleware/errorHandler';
+import { RequestWithUser } from '../middleware/auth';
+import { deleteImage, getPublicIdFromUrl } from '../services/uploadService';
 
 export const getProfile = async (
   req: Request,
@@ -146,6 +148,42 @@ export const deleteUser = async (
     res.status(204).json({
       status: 'success',
       data: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const uploadProfileImage = async (
+  req: RequestWithUser,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.file) {
+      throw new AppError('Please upload an image', 400);
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    // Delete old profile image if exists
+    if (user.profileImage) {
+      const publicId = getPublicIdFromUrl(user.profileImage);
+      await deleteImage(publicId);
+    }
+
+    // Update user with new image URL
+    user.profileImage = (req.file as any).path;
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        profileImage: user.profileImage,
+      },
     });
   } catch (error) {
     next(error);

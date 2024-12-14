@@ -7,9 +7,11 @@ import {
   getUser,
   updateUser,
   deleteUser,
+  uploadProfileImage,
 } from '../controllers/userController';
 import { requireAuth, requireAdmin } from '../middleware/auth';
 import { validateRequest } from '../middleware/validateRequest';
+import { upload } from '../services/uploadService';
 
 const router = express.Router();
 
@@ -36,6 +38,14 @@ router.put(
   ],
   validateRequest,
   updateProfile
+);
+
+// Add this route after other profile routes
+router.post(
+  '/profile/image',
+  requireAuth,
+  upload.single('image'),
+  uploadProfileImage as any
 );
 
 // Admin routes

@@ -1,12 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import { Product } from '../models/Product';
 import { AppError } from '../middleware/errorHandler';
+import { PipelineStage } from 'mongoose';
 
 interface FilterQuery {
   isActive: boolean;
   name?: { $regex: string; $options: string };
   category?: string;
   price?: { $gte?: number; $lte?: number };
+  stock?: { $gte?: number };
 }
 
 export const createProduct = async (
@@ -36,6 +38,7 @@ export const getProducts = async (
       category,
       minPrice,
       maxPrice,
+      minStock,
       sortBy = 'createdAt',
       order = 'desc',
       limit = 10,
@@ -45,7 +48,7 @@ export const getProducts = async (
     // Base query
     const query: FilterQuery = { isActive: true };
 
-    // Search by name
+    // Search by name or description (full text search)
     if (search) {
       query.name = { $regex: String(search), $options: 'i' };
     }
@@ -62,17 +65,46 @@ export const getProducts = async (
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
+    // Filter by stock
+    if (minStock) {
+      query.stock = { $gte: Number(minStock) };
+    }
+
     // Build query
     const sortOrder = order === 'desc' ? -1 : 1;
     const skip = (Number(page) - 1) * Number(limit);
 
-    // Execute query
-    const [products, total] = await Promise.all([
-      Product.find(query)
-        .sort({ [String(sortBy)]: sortOrder })
-        .skip(skip)
-        .limit(Number(limit)),
-      Product.countDocuments(query),
+    // Execute query with aggregation pipeline
+    const aggregation = [
+      { $match: query },
+      {
+        $facet: {
+          metadata: [{ $count: 'total' }],
+          data: [
+            { $sort: { [String(sortBy)]: sortOrder } },
+            { $skip: skip },
+            { $limit: Number(limit) },
+          ],
+        },
+      },
+    ];
+
+    const [result] = await Product.aggregate(aggregation as PipelineStage[]);
+    const total = result.metadata[0]?.total || 0;
+    const products = result.data;
+
+    // Get unique categories for filters
+    const categories = await Product.distinct('category', { isActive: true });
+
+    // Get price range
+    const priceRange = await Product.aggregate([
+      {
+        $group: {
+          _id: null,
+          minPrice: { $min: '$price' },
+          maxPrice: { $max: '$price' },
+        },
+      },
     ]);
 
     res.status(200).json({
@@ -83,6 +115,10 @@ export const getProducts = async (
         page: Number(page),
         pages: Math.ceil(total / Number(limit)),
         limit: Number(limit),
+      },
+      filters: {
+        categories,
+        priceRange: priceRange[0] || { minPrice: 0, maxPrice: 0 },
       },
       data: { products },
     });
@@ -165,35 +201,31 @@ export const deleteProduct = async (
 };
 
 export const searchProducts = async (
-  req: Request, 
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { query, category, minPrice, maxPrice } = req.query;
-    
-    const filter: FilterQuery = { isActive: true };
-    
-    if (query) {
-      filter.name = { $regex: String(query), $options: 'i' };
-    }
-    
-    if (category) {
-      filter.category = String(category);
-    }
-    
-    if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = Number(minPrice);
-      if (maxPrice) filter.price.$lte = Number(maxPrice);
+    const { q } = req.query;
+
+    if (!q) {
+      throw new AppError('Search query is required', 400);
     }
 
-    const products = await Product.find(filter);
+    const products = await Product.find(
+      {
+        $text: { $search: String(q) },
+        isActive: true,
+      },
+      { score: { $meta: 'textScore' } }
+    )
+      .sort({ score: { $meta: 'textScore' } })
+      .limit(10);
 
     res.status(200).json({
       status: 'success',
       results: products.length,
-      data: { products }
+      data: { products },
     });
   } catch (error) {
     next(error);
